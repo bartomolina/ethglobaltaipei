@@ -86,6 +86,7 @@ async def main():
     logger.info(f"Starting game server on {host}:{port}")
     
     try:
+        # Run without SSL - Digital Ocean will handle SSL termination
         async with websockets.serve(handler, host, port):
             logger.info("Server is running...")
             await asyncio.Future()  # Run forever
