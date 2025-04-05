@@ -8,7 +8,18 @@ export interface PlayerState {
     y: number;
   };
   face?: string;
+  name: string;
+  health: number;
   lastUpdate: string;
+  shooting?: {
+    isShooting: boolean;
+    direction: {
+      x: number;
+      y: number;
+      z: number;
+    };
+    timestamp: string;
+  };
 }
 
 type GameState = {

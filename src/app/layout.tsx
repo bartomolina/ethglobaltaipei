@@ -1,22 +1,34 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import { Press_Start_2P } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const pressStart2P = Press_Start_2P({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-press-start-2p",
+});
 
 export const metadata: Metadata = {
-  title: "3D Scene Demo",
-  description: "A simple Next.js app with React Three Fiber",
+  title: "ETH Global Taipei",
+  description: "ETH Global Taipei",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body
+        className={`${GeistSans.variable} ${GeistMono.variable} ${pressStart2P.variable}`}
+      >
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }
