@@ -20,21 +20,32 @@ class WebSocketService {
   private onUpdateCallback: ((state: GameState) => void) | null = null;
   private isConnecting = false;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 3;
+  private maxReconnectAttempts = 5;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
+
+  private getWebSocketUrl(): string {
+    // Use environment variable with fallback for local development
+    return process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:8765";
+  }
 
   connect() {
     if (this.ws?.readyState === WebSocket.OPEN || this.isConnecting) return;
 
     try {
       this.isConnecting = true;
-      console.log("Attempting to connect to game server...");
+      const wsUrl = this.getWebSocketUrl();
+      console.log(`Attempting to connect to game server at ${wsUrl}...`);
 
-      this.ws = new WebSocket("ws://localhost:8765");
+      this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
         console.log("Connected to game server");
         this.isConnecting = false;
         this.reconnectAttempts = 0;
+        if (this.reconnectTimeout) {
+          clearTimeout(this.reconnectTimeout);
+          this.reconnectTimeout = null;
+        }
       };
 
       this.ws.onmessage = (event) => {
@@ -49,11 +60,8 @@ class WebSocketService {
       };
 
       this.ws.onerror = (error) => {
-        console.warn(
-          "WebSocket connection error - multiplayer features will be disabled"
-        );
+        console.warn("WebSocket connection error:", error);
         this.isConnecting = false;
-        this.ws = null;
       };
 
       this.ws.onclose = () => {
@@ -61,13 +69,22 @@ class WebSocketService {
         this.isConnecting = false;
         this.ws = null;
 
-        // Try to reconnect if we haven't exceeded max attempts
+        // Try to reconnect with exponential backoff
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.reconnectAttempts++;
-          console.log(
-            `Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`
+          const backoffTime = Math.min(
+            1000 * Math.pow(2, this.reconnectAttempts),
+            10000
           );
-          setTimeout(() => this.connect(), 2000);
+          console.log(
+            `Reconnecting in ${backoffTime}ms (attempt ${
+              this.reconnectAttempts + 1
+            }/${this.maxReconnectAttempts})`
+          );
+
+          this.reconnectTimeout = setTimeout(() => {
+            this.reconnectAttempts++;
+            this.connect();
+          }, backoffTime);
         } else {
           console.warn(
             "Max reconnection attempts reached - multiplayer features will be disabled"
@@ -82,6 +99,11 @@ class WebSocketService {
   }
 
   disconnect() {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     if (this.ws) {
       this.ws.close();
       this.ws = null;
